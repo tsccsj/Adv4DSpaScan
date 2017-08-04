@@ -111,7 +111,7 @@ void getCCCount2DSame(double * x1, double * y1, double * x2, double * y2, int * 
 		for(int j = 0; j < locCount; j++) {
 			distanceO = sqrt((x1[i] - x1[j]) * (x1[i] - x1[j]) + (y1[i] - y1[j]) * (y1[i] - y1[j]));
 			distanceD = sqrt((x2[i] - x2[j]) * (x2[i] - x2[j]) + (y2[i] - y2[j]) * (y2[i] - y2[j]));
-			if(distanceO < distanceD) {
+			if(distanceO > distanceD) {
 				minWindow = (int)(ceil(distanceO / wSize));
 			}
 			else {
@@ -172,7 +172,7 @@ void getCCCount2DSame(double * x1, double * y1, double * x2, double * y2, int * 
 		
 			distanceO = sqrt((centerX1 - x1[j]) * (centerX1 - x1[j]) + (centerY1 - y1[j]) * (centerY1 - y1[j]));
 			distanceD = sqrt((centerX2 - x2[j]) * (centerX2 - x2[j]) + (centerY2 - y2[j]) * (centerY2 - y2[j]));
-			if(distanceO < distanceD) {
+			if(distanceO > distanceD) {
 				minWindow = (int)(ceil(distanceO / wSize));
 			}
 			else {
@@ -238,7 +238,7 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			for(int k = 0; k < wCount; k++) {
 				for(int j = 0; j < wCount; j++) {
 					if(k + j > sumWindow) {
-						casInW[i * wCount + k * wCount + j] = -1;
+						casInW[i * windowPerCen + k * wCount + j] = -1;
 					}
 				}
 			}
@@ -262,7 +262,6 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 		casInW[i] = 0;
 		conInW[i] = 0;
 	}
-
 
 #pragma omp parallel for private(distanceO, distanceD, minWindowO, minWindowD)
 	for(int i = 0; i < totalCenters; i++) {
@@ -307,7 +306,7 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			for(int k = 0; k < wCount; k++) {
 				for(int j = 0; j < wCount; j++) {
 					if(k + j > sumWindow) {
-						casInW[i * wCount + k * wCount + j] = -1;
+						casInW[i * windowPerCen + k * wCount + j] = -1;
 					}
 				}
 			}
@@ -369,7 +368,7 @@ void loglikelihood(double * ll, int * casInW, int * conInW, int totalWindow, int
 	
 }
 
-void findTopNCluster(double * x1, double * y1, double * x2, double * y2, int locCount, double * ll, double wSize, int wCount, int * center, int * radius,  double * cLL, int nClusters) {
+void findTopNCluster4DSph(double * x1, double * y1, double * x2, double * y2, int locCount, double * ll, double wSize, int wCount, int * center, int * radius,  double * cLL, int nClusters) {
 	if(nClusters < 1)
 		return;
 
@@ -452,8 +451,608 @@ void findTopNCluster(double * x1, double * y1, double * x2, double * y2, int loc
 		lastY2 = y2[aCenter];
 
 		lastRad = (aRadius + 1) * wSize;
-
 	}
 
 	return;	
 }
+
+void findTopNCluster4DSph(double xMin, double yMin, double cellSize, int nRow, int nCol, double * ll, double wSize, int wCount, int * center, int * radius,  double * cLL, int nClusters) {
+	if(nClusters < 1)
+		return;
+
+	int totalCenters = nRow * nRow * nCol * nCol;
+	
+	int aCenter = -1;
+	int aRadius = -1;
+
+	for(int i = 0; i < totalCenters; i++) {
+		for(int j = 0; j < wCount; j++) {
+			if(ll[i * wCount + j] < 0) {
+				if(aCenter < 0) {
+					aCenter = i;
+					aRadius = j;
+				}
+				else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+					aCenter = i;
+					aRadius = j;
+				}
+			}
+		}
+	}
+
+	center[0] = aCenter;
+	radius[0] = aRadius;	
+	cLL[0] = ll[aCenter * wCount + aRadius];
+
+	int temp;	
+	int cX2 = aCenter % nCol;
+	temp = aCenter / nCol;
+	int cY2 = temp % nRow;
+	temp = temp / nRow;
+	int cX1 = temp % nCol;
+	int cY1 = temp / nCol;
+
+	double lastX1 = xMin + cellSize * cX1;
+	double lastY1 = yMin + cellSize * cY1;
+	double lastX2 = xMin + cellSize * cX2;
+	double lastY2 = yMin + cellSize * cY2;
+
+	double lastRad = (aRadius + 1) * wSize;
+
+	double distance;
+	int maxWindow;
+
+	double thisX1, thisY1, thisX2, thisY2;
+
+	for(int c = 1; c < nClusters; c ++) {
+		//Remove intersecting clusters
+		for(int i = 0; i < totalCenters; i++) {
+			cX2 = i % nCol;
+			temp = i / nCol;
+			cY2 = temp % nRow;
+			temp = temp / nRow;
+			cX1 = temp % nCol;
+			cY1 = temp / nCol;
+
+			thisX1 = xMin + cellSize * cX1;
+			thisY1 = yMin + cellSize * cY1;
+			thisX2 = xMin + cellSize * cX2;
+			thisY2 = yMin + cellSize * cY2;	
+		
+			distance = sqrt((thisX1 - lastX1) * (thisX1 - lastX1) + (thisY1 - lastY1) * (thisY1 - lastY1) + (thisX2 - lastX2) * (thisX2 - lastX2) + (thisY2 - lastY2) * (thisY2 - lastY2)) - lastRad;
+			maxWindow = ceil(distance / wSize) - 1;
+
+			if(maxWindow < 0)
+				maxWindow = 0;
+			for(int j = maxWindow; j < wCount; j++) {
+				ll[i * wCount + j] = 1;
+			}			
+		}
+		
+
+		//Find secoundary clusters
+		aCenter = -1;
+		aRadius = -1;
+
+		for(int i = 0; i < totalCenters; i++) {
+			for(int j = 0; j < wCount; j++) {
+				if(ll[i * wCount + j] < 0) {
+					if(aCenter < 0) {
+						aCenter = i;
+						aRadius = j;
+					}
+					else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+						aCenter = i;
+						aRadius = j;
+					}
+				}
+			}
+		}
+		center[c] = aCenter;
+		radius[c] = aRadius;
+		if(aCenter != -1) {
+			cLL[c] = ll[aCenter * wCount + aRadius];
+		}
+		else {
+			break;
+		}	
+		cX2 = aCenter % nCol;
+		temp = aCenter / nCol;
+		cY2 = temp % nRow;
+		temp = temp / nRow;
+		cX1 = temp % nCol;
+		cY1 = temp / nCol;
+
+		lastX1 = xMin + cellSize * cX1;
+		lastY1 = yMin + cellSize * cY1;
+		lastX2 = xMin + cellSize * cX2;
+		lastY2 = yMin + cellSize * cY2;	
+	
+		lastRad = (aRadius + 1) * wSize;
+	}
+
+	return;	
+}
+
+void findTopNCluster2DSame(double * x1, double * y1, double * x2, double * y2, int locCount, double * ll, double wSize, int wCount, int * center, int * radius,  double * cLL, int nClusters) {
+	if(nClusters < 1)
+		return;
+
+	int aCenter = -1;
+	int aRadius = -1;
+
+	for(int i = 0; i < locCount; i++) {
+		for(int j = 0; j < wCount; j++) {
+			if(ll[i * wCount + j] < 0) {
+				if(aCenter < 0) {
+					aCenter = i;
+					aRadius = j;
+				}
+				else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+					aCenter = i;
+					aRadius = j;
+				}
+			}
+		}
+	}
+
+	center[0] = aCenter;
+	radius[0] = aRadius;	
+	cLL[0] = ll[aCenter * wCount + aRadius];
+
+	double lastX1, lastY1, lastX2, lastY2, lastRad;
+	lastX1 = x1[aCenter];
+	lastY1 = y1[aCenter];
+	lastX2 = x2[aCenter];
+	lastY2 = y2[aCenter];
+
+	lastRad = (aRadius + 1) * wSize;
+
+	double distanceO, distanceD;
+	int maxWindow;
+
+	for(int c = 1; c < nClusters; c ++) {
+		//Remove intersecting clusters
+		for(int i = 0; i < locCount; i++) {
+			distanceO = sqrt((x1[i] - lastX1) * (x1[i] - lastX1) + (y1[i] - lastY1) * (y1[i] - lastY1)) - lastRad;
+			distanceD = sqrt((x2[i] - lastX2) * (x2[i] - lastX2) + (y2[i] - lastY2) * (y2[i] - lastY2)) - lastRad;
+
+			if(distanceO > distanceD) {
+				maxWindow = ceil(distanceO / wSize) - 1;
+			}
+			else {
+				maxWindow = ceil(distanceD / wSize) - 1;
+			}
+			if(maxWindow < 0)
+				maxWindow = 0;
+
+			for(int j = maxWindow; j < wCount; j++) {
+				ll[i * wCount + j] = 1;
+			}			
+		}
+		
+
+		//Find secoundary clusters
+		aCenter = -1;
+		aRadius = -1;
+
+		for(int i = 0; i < locCount; i++) {
+			for(int j = 0; j < wCount; j++) {
+				if(ll[i * wCount + j] < 0) {
+					if(aCenter < 0) {
+						aCenter = i;
+						aRadius = j;
+					}
+					else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+						aCenter = i;
+						aRadius = j;
+					}
+				}
+			}
+		}
+		center[c] = aCenter;
+		radius[c] = aRadius;
+		if(aCenter != -1) {
+			cLL[c] = ll[aCenter * wCount + aRadius];
+		}
+		else {
+			break;
+		}
+
+		lastX1 = x1[aCenter];
+		lastY1 = y1[aCenter];
+		lastX2 = x2[aCenter];
+		lastY2 = y2[aCenter];
+
+		lastRad = (aRadius + 1) * wSize;
+	}
+
+	return;	
+}
+
+void findTopNCluster2DSame(double xMin, double yMin, double cellSize, int nRow, int nCol, double * ll, double wSize, int wCount, int * center, int * radius,  double * cLL, int nClusters) {
+	if(nClusters < 1)
+		return;
+
+	int totalCenters = nRow * nRow * nCol * nCol;
+	
+	int aCenter = -1;
+	int aRadius = -1;
+
+	for(int i = 0; i < totalCenters; i++) {
+		for(int j = 0; j < wCount; j++) {
+			if(ll[i * wCount + j] < 0) {
+				if(aCenter < 0) {
+					aCenter = i;
+					aRadius = j;
+				}
+				else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+					aCenter = i;
+					aRadius = j;
+				}
+			}
+		}
+	}
+
+	center[0] = aCenter;
+	radius[0] = aRadius;	
+	cLL[0] = ll[aCenter * wCount + aRadius];
+
+	int temp;	
+	int cX2 = aCenter % nCol;
+	temp = aCenter / nCol;
+	int cY2 = temp % nRow;
+	temp = temp / nRow;
+	int cX1 = temp % nCol;
+	int cY1 = temp / nCol;
+
+	double lastX1 = xMin + cellSize * cX1;
+	double lastY1 = yMin + cellSize * cY1;
+	double lastX2 = xMin + cellSize * cX2;
+	double lastY2 = yMin + cellSize * cY2;
+
+	double lastRad = (aRadius + 1) * wSize;
+
+	double distanceO, distanceD;
+	int maxWindow;
+
+	double thisX1, thisY1, thisX2, thisY2;
+
+	for(int c = 1; c < nClusters; c ++) {
+		//Remove intersecting clusters
+		for(int i = 0; i < totalCenters; i++) {
+			cX2 = i % nCol;
+			temp = i / nCol;
+			cY2 = temp % nRow;
+			temp = temp / nRow;
+			cX1 = temp % nCol;
+			cY1 = temp / nCol;
+
+			thisX1 = xMin + cellSize * cX1;
+			thisY1 = yMin + cellSize * cY1;
+			thisX2 = xMin + cellSize * cX2;
+			thisY2 = yMin + cellSize * cY2;	
+		
+			distanceO = sqrt((thisX1 - lastX1) * (thisX1 - lastX1) + (thisY1 - lastY1) * (thisY1 - lastY1)) - lastRad;
+			distanceD = sqrt((thisX2 - lastX2) * (thisX2 - lastX2) + (thisY2 - lastY2) * (thisY2 - lastY2)) - lastRad;
+
+			if(distanceO > distanceD) {
+				maxWindow = ceil(distanceO / wSize) - 1;
+			}
+			else {
+				maxWindow = ceil(distanceD / wSize) - 1;
+			}
+			if(maxWindow < 0)
+				maxWindow = 0;
+
+			for(int j = maxWindow; j < wCount; j++) {
+				ll[i * wCount + j] = 1;
+			}			
+
+		}
+		
+
+		//Find secoundary clusters
+		aCenter = -1;
+		aRadius = -1;
+
+		for(int i = 0; i < totalCenters; i++) {
+			for(int j = 0; j < wCount; j++) {
+				if(ll[i * wCount + j] < 0) {
+					if(aCenter < 0) {
+						aCenter = i;
+						aRadius = j;
+					}
+					else if(ll[i * wCount + j] > ll[aCenter * wCount + aRadius]) {
+						aCenter = i;
+						aRadius = j;
+					}
+				}
+			}
+		}
+		center[c] = aCenter;
+		radius[c] = aRadius;
+		if(aCenter != -1) {
+			cLL[c] = ll[aCenter * wCount + aRadius];
+		}
+		else {
+			break;
+		}	
+		cX2 = aCenter % nCol;
+		temp = aCenter / nCol;
+		cY2 = temp % nRow;
+		temp = temp / nRow;
+		cX1 = temp % nCol;
+		cY1 = temp / nCol;
+
+		lastX1 = xMin + cellSize * cX1;
+		lastY1 = yMin + cellSize * cY1;
+		lastX2 = xMin + cellSize * cX2;
+		lastY2 = yMin + cellSize * cY2;	
+	
+		lastRad = (aRadius + 1) * wSize;
+	}
+
+	return;	
+}
+
+void findTopNCluster2DDiff(double * x1, double * y1, double * x2, double * y2, int locCount, double * ll, double wSize, int wCount, int * center, int * radiusO, int * radiusD,  double * cLL, int nClusters) {
+	if(nClusters < 1)
+		return;
+
+	int aCenter = -1;
+	int aRadiusO = -1;
+	int aRadiusD = -1;
+
+	int windowPerCen = wCount * wCount;
+	
+
+	for(int i = 0; i < locCount; i++) {
+		for(int j = 0; j < wCount; j++) {
+			for(int k = 0; k < wCount; k++) {
+				if(ll[i * windowPerCen + j * wCount + k] < 0) {
+					if(aCenter < 0) {
+						aCenter = i;
+						aRadiusO = j;
+						aRadiusD = k;
+					}
+					else if(ll[i * windowPerCen + j * wCount + k] > ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD]) {
+						aCenter = i;
+						aRadiusO = j;
+						aRadiusD = k;
+					}
+				}
+			}	
+		}
+	}
+
+	center[0] = aCenter;
+	radiusO[0] = aRadiusO;
+	radiusD[0] = aRadiusD;	
+	cLL[0] = ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD];
+
+	double lastX1, lastY1, lastX2, lastY2, lastRadO, lastRadD;
+	lastX1 = x1[aCenter];
+	lastY1 = y1[aCenter];
+	lastX2 = x2[aCenter];
+	lastY2 = y2[aCenter];
+
+	lastRadO = (aRadiusO + 1) * wSize;
+	lastRadD = (aRadiusD + 1) * wSize;
+
+	double distanceO, distanceD;
+	int maxWindowO, maxWindowD;
+
+	for(int c = 1; c < nClusters; c ++) {
+		//Remove intersecting clusters
+		for(int i = 0; i < locCount; i++) {
+			distanceO = sqrt((x1[i] - lastX1) * (x1[i] - lastX1) + (y1[i] - lastY1) * (y1[i] - lastY1)) - lastRadO;
+			distanceD = sqrt((x2[i] - lastX2) * (x2[i] - lastX2) + (y2[i] - lastY2) * (y2[i] - lastY2)) - lastRadD;
+
+			maxWindowO = ceil(distanceO / wSize) - 1;
+			maxWindowD = ceil(distanceD / wSize) - 1;
+			
+			if(maxWindowO < 0)
+				maxWindowO = 0;
+			if(maxWindowD < 0)
+				maxWindowD = 0;
+
+			for(int j = maxWindowO; j < wCount; j++) {
+				for(int k = maxWindowD; k < wCount; k++) {
+			
+					ll[i * windowPerCen + j * wCount + k] = 1;
+				}
+			}			
+		}
+		
+
+		//Find secoundary clusters
+		aCenter = -1;
+		aRadiusO = -1;
+		aRadiusD = -1;
+
+		for(int i = 0; i < locCount; i++) {
+			for(int j = 0; j < wCount; j++) {
+				for(int k = 0; k < wCount; k++) { 
+					if(ll[i * windowPerCen + j * wCount + k] < 0) {
+						if(aCenter < 0) {
+							aCenter = i;
+							aRadiusO = j;
+							aRadiusD = k;
+						}
+						else if(ll[i * windowPerCen + j * wCount + k] > ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD]) {
+							aCenter = i;
+							aRadiusO = j;
+							aRadiusD = k;
+						}
+					}
+				}
+			}
+		}
+
+		center[c] = aCenter;
+		radiusO[c] = aRadiusO;
+		radiusD[c] = aRadiusD;	
+		if(aCenter != -1) {
+			cLL[c] = ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD];
+		}
+		else {
+			break;
+		}
+
+		lastX1 = x1[aCenter];
+		lastY1 = y1[aCenter];
+		lastX2 = x2[aCenter];
+		lastY2 = y2[aCenter];
+
+		lastRadO = (aRadiusO + 1) * wSize;
+		lastRadD = (aRadiusD + 1) * wSize;
+	}
+
+	return;	
+}
+
+void findTopNCluster2DDiff(double xMin, double yMin, double cellSize, int nRow, int nCol, double * ll, double wSize, int wCount, int * center, int * radiusO, int * radiusD, double * cLL, int nClusters) {
+	if(nClusters < 1)
+		return;
+
+	int totalCenters = nRow * nRow * nCol * nCol;
+	int windowPerCen = wCount * wCount;
+	
+	int aCenter = -1;
+	int aRadiusO = -1;
+	int aRadiusD = -1;
+
+	for(int i = 0; i < totalCenters; i++) {
+		for(int j = 0; j < wCount; j++) {
+			for(int k = 0; k < wCount; k++) {
+				if(ll[i * windowPerCen + j * wCount + k] < 0) {
+					if(aCenter < 0) {
+						aCenter = i;
+						aRadiusO = j;
+						aRadiusD = k;
+					}
+					else if(ll[i * windowPerCen + j * wCount + k] > ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD]) {
+						aCenter = i;
+						aRadiusO = j;
+						aRadiusD = k;
+					}
+				}
+			}
+		}
+	}
+
+	center[0] = aCenter;
+	radiusO[0] = aRadiusO;
+	radiusD[0] = aRadiusD;	
+	cLL[0] = ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD];
+
+	int temp;	
+	int cX2 = aCenter % nCol;
+	temp = aCenter / nCol;
+	int cY2 = temp % nRow;
+	temp = temp / nRow;
+	int cX1 = temp % nCol;
+	int cY1 = temp / nCol;
+
+	double lastX1 = xMin + cellSize * cX1;
+	double lastY1 = yMin + cellSize * cY1;
+	double lastX2 = xMin + cellSize * cX2;
+	double lastY2 = yMin + cellSize * cY2;
+
+	double lastRadO = (aRadiusO + 1) * wSize;
+	double lastRadD = (aRadiusD + 1) * wSize;
+
+	double distanceO, distanceD;
+	int maxWindowO, maxWindowD;;
+
+	double thisX1, thisY1, thisX2, thisY2;
+
+	for(int c = 1; c < nClusters; c ++) {
+		//Remove intersecting clusters
+		for(int i = 0; i < totalCenters; i++) {
+			cX2 = i % nCol;
+			temp = i / nCol;
+			cY2 = temp % nRow;
+			temp = temp / nRow;
+			cX1 = temp % nCol;
+			cY1 = temp / nCol;
+
+			thisX1 = xMin + cellSize * cX1;
+			thisY1 = yMin + cellSize * cY1;
+			thisX2 = xMin + cellSize * cX2;
+			thisY2 = yMin + cellSize * cY2;	
+		
+			distanceO = sqrt((thisX1 - lastX1) * (thisX1 - lastX1) + (thisY1 - lastY1) * (thisY1 - lastY1)) - lastRadO;
+			distanceD = sqrt((thisX2 - lastX2) * (thisX2 - lastX2) + (thisY2 - lastY2) * (thisY2 - lastY2)) - lastRadD;
+			maxWindowO = ceil(distanceO / wSize) - 1;
+			maxWindowD = ceil(distanceD / wSize) - 1;
+			
+			if(maxWindowO < 0)
+				maxWindowO = 0;
+			if(maxWindowD < 0)
+				maxWindowD = 0;
+
+			for(int j = maxWindowO; j < wCount; j++) {
+				for(int k = maxWindowD; k < wCount; k++) {
+			
+					ll[i * windowPerCen + j * wCount + k] = 1;
+				}
+			}	
+
+		}
+		
+
+		//Find secoundary clusters
+		aCenter = -1;
+		aRadiusO = -1;
+		aRadiusD = -1;
+
+		for(int i = 0; i < totalCenters; i++) {
+			for(int j = 0; j < wCount; j++) {
+				for(int k = 0; k < wCount; k++) {
+					if(ll[i * windowPerCen + j * wCount + k] < 0) {
+						if(aCenter < 0) {
+							aCenter = i;
+							aRadiusO = j;
+							aRadiusD = k;
+						}
+						else if(ll[i * windowPerCen + j * wCount + k] > ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD]) {
+							aCenter = i;
+							aRadiusO = j;
+							aRadiusD = k;
+						}
+					}
+				}	
+			}
+		}
+		center[c] = aCenter;
+		radiusO[c] = aRadiusO;
+		radiusD[c] = aRadiusD;	
+		if(aCenter != -1) {
+			cLL[c] = ll[aCenter * windowPerCen + aRadiusO * wCount + aRadiusD];
+		}
+		else {
+			break;
+		}
+
+		cX2 = aCenter % nCol;
+		temp = aCenter / nCol;
+		cY2 = temp % nRow;
+		temp = temp / nRow;
+		cX1 = temp % nCol;
+		cY1 = temp / nCol;
+
+		lastX1 = xMin + cellSize * cX1;
+		lastY1 = yMin + cellSize * cY1;
+		lastX2 = xMin + cellSize * cX2;
+		lastY2 = yMin + cellSize * cY2;	
+	
+		lastRadO = (aRadiusO + 1) * wSize;
+		lastRadD = (aRadiusD + 1) * wSize;
+	}
+
+	return;	
+}
+
+

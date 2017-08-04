@@ -180,6 +180,71 @@ int main(int argc, char ** argv) {
 	
 	}
 	
+	loglikelihood(ll, casInW, conInW, totalWindows, casCount, conCount, highLow);
+
+	int * center;
+	int * radiusO;
+	int * radiusD;
+	double * cLL;
+
+	if(NULL == (center = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+
+	if(NULL == (radiusO = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+
+	if(NULL == (radiusD = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+
+	if(NULL == (cLL = (double *) malloc (nClusters * sizeof(double)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+
+	if(windowShape == 0) {
+		if(pAsCenter == 2) {
+			findTopNCluster4DSph(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
+		}
+		else {
+			findTopNCluster4DSph(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
+		}
+	}
+	else if(windowShape == 1) {
+		if(pAsCenter == 2) {
+			findTopNCluster2DSame(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
+		}
+		else {
+			findTopNCluster2DSame(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
+		}
+	}
+	else {
+		if(pAsCenter == 2) {
+			findTopNCluster2DDiff(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
+		}
+		else {
+			findTopNCluster2DDiff(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
+		}
+	}	
+	
+
+
+
+
+
+	free(center);
+	free(radiusO);
+	free(radiusD);
+	free(cLL);
+
+	
+
+
 
 
 
