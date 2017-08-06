@@ -1,7 +1,7 @@
 /**
  * Adv4DScanBer.c
  * Authors: Yizhao Gao <yizhaotsccsj@gmail.com>
- * Date: {08/01/2017}
+ * Date: {08/06/2017}
  */
 
 #include <stdio.h>
@@ -10,6 +10,7 @@
 #include <limits.h>
 #include "io.h"
 #include "scan.h"
+#include "mc.h"
 
 int main(int argc, char ** argv) {
 
@@ -115,17 +116,23 @@ int main(int argc, char ** argv) {
 	printf("Finish reading input files.\n");
 
 	long long totalWindowsL;
+	int totalCenters;
+	int windowPerCen;
 	if(windowShape == 2) {
 		totalWindowsL = wCount * wCount;
+		windowPerCen = wCount * wCount;
 	}
 	else {
 		totalWindowsL = wCount;
+		windowPerCen = wCount;
 	}
 	if(pAsCenter != 2) {
 		totalWindowsL = totalWindowsL * locCount;
+		totalCenters = locCount;
 	}
 	else {
 		totalWindowsL = totalWindowsL * nRow * nCol * nRow * nCol;
+		totalCenters = nRow * nCol * nRow * nCol;
 	}
 
 	printf("There are %ld total scanning windows\n", totalWindowsL);
@@ -233,7 +240,170 @@ int main(int argc, char ** argv) {
 	}	
 	
 
+	int * clusterCas;
+	int * clusterCon;
+	double * cRadiusO;
+	double * cRadiusD;
+	int * highCluster;
 
+	if(NULL == (clusterCas = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+	if(NULL == (clusterCon = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+	if(NULL == (cRadiusO = (double *) malloc (nClusters * sizeof(double)))) {	
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+	if(NULL == (cRadiusD = (double *) malloc (nClusters * sizeof(double)))) {	
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+	if(NULL == (highCluster = (int *) malloc (nClusters * sizeof(int)))) {
+		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+		exit(1);
+	}
+
+
+	for(int i = 0; i < nClusters; i ++) {
+		if(center[i] == -1) {
+			nClusters = i;
+			break;
+		}
+		if(windowShape == 2) {
+			clusterCas[i] = casInW[center[i] * windowPerCen + radiusO[i] * wCount + radiusD[i]];
+			clusterCon[i] = conInW[center[i] * windowPerCen + radiusO[i] * wCount + radiusD[i]];
+			cRadiusO[i] = wSize * (radiusO[i] + 1);
+			cRadiusD[i] = wSize * (radiusD[i] + 1);
+		}
+		else {
+			clusterCas[i] = casInW[center[i] * wCount + radiusO[i]];
+			clusterCon[i] = conInW[center[i] * wCount + radiusO[i]];
+			cRadiusO[i] = wSize * (radiusO[i] + 1);
+		}
+
+		double expCas = (double)casCount*(clusterCas[i] + clusterCon[i])/(casCount+conCount);
+		if(clusterCas[i] > expCas)      //High clusters
+			highCluster[i] = 1;
+		else
+			highCluster[i] = 0;
+	}
+
+//Here is the Monte Carlo Simulation
+	int * nExtreme;
+
+	if(nSim > 0) {
+	
+		int * locEnding;
+		int accCount = 0;
+		if(NULL == (locEnding = (int *) malloc (locCount * sizeof(int)))) {
+			printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
+			exit(1);
+		}
+
+		for(int i = 0; i < locCount; i ++) {
+			accCount += nCass[i] + nCons[i];
+			locEnding[i] = accCount;
+		}
+
+		nExtreme = monteCarlo(x1, y1, x2, y2, locEnding, locCount, casCount, casCount + conCount, windowShape, wSize, wCount, elimIntersectOD, highLow, cLL, nClusters, nSim, pAsCenter, xMin, yMin, cellSize, nRow, nCol);
+		
+		free(locEnding);
+	}
+
+	printf("############### Cluster Info ###############\n");
+	printf("ID,HL,X1,Y1,X2,Y2,");
+	if(windowShape == 2) {
+		printf("RadiusO,RaiudsD,#Cas,#Con,Exp#Cas,Exp#Con");
+	}
+	else {
+		printf("Radius,#Cas,#Con,Exp#Cas,Exp#Con");
+	}
+	if(nSim > 0)
+		printf(",LL,P\n");
+	else
+		printf(",LL\n");
+	for(int i = 0; i < nClusters; i ++) {
+
+		double expCas = (double)casCount*(clusterCas[i] + clusterCon[i])/(casCount+conCount);
+		double expCon = (double)conCount*(clusterCas[i] + clusterCon[i])/(casCount+conCount);
+
+		printf("%d", i);
+		if(highCluster[i]) 	//High clusters
+			printf(",H");
+		else			//Low clusters
+			printf(",L");
+
+		printf(",%lf,%lf,%lf,%lf,", x1[center[i]], y1[center[i]], x2[center[i]], y2[center[i]]);
+		if(windowShape == 2) {
+			printf("%lf,%lf", cRadiusO[i], cRadiusD[i]);
+		}
+		else {
+			printf("%lf", cRadiusO[i]);
+		}
+		printf(",%d,%d,%lf,%lf", clusterCas[i], clusterCon[i], expCas, expCon);
+		if(nSim > 0)
+			printf(",%lf,%lf\n", cLL[i], (double)(nExtreme[i] + 1) / (nSim + 1));
+		else
+			printf(",%lf\n", cLL[i]);
+		
+	}
+
+	printf("############ Cluster Membership ############\n");
+
+	int inCluster;
+	double distanceO, distanceD;		
+	double radiusValue;
+
+	for(int i = 0; i < locCount; i++) {
+		inCluster = 0;
+
+		for(int j = 0; j < nClusters; j++) {
+
+			if(windowShape == 0) {
+				distanceO = sqrt((x1[i] - x1[center[j]]) * (x1[i] - x1[center[j]]) + (y1[i] - y1[center[j]]) * (y1[i] - y1[center[j]]) + (x2[i] - x2[center[j]]) * (x2[i] - x2[center[j]]) + (y2[i] - y2[center[j]]) * (y2[i] - y2[center[j]]));
+				if(distanceO <= cRadiusO[j]) {
+					inCluster = 1;
+				}
+			}
+			else if(windowShape == 1) {
+				distanceO = sqrt((x1[i] - x1[center[j]]) * (x1[i] - x1[center[j]]) + (y1[i] - y1[center[j]]) * (y1[i] - y1[center[j]]));
+				distanceD = sqrt((x2[i] - x2[center[j]]) * (x2[i] - x2[center[j]]) + (y2[i] - y2[center[j]]) * (y2[i] - y2[center[j]]));
+				if(distanceO <= cRadiusO[i] && distanceD <= cRadiusO[i]) {
+					inCluster = 1;
+				}		
+			}
+			else {
+				distanceO = sqrt((x1[i] - x1[center[j]]) * (x1[i] - x1[center[j]]) + (y1[i] - y1[center[j]]) * (y1[i] - y1[center[j]]));
+				distanceD = sqrt((x2[i] - x2[center[j]]) * (x2[i] - x2[center[j]]) + (y2[i] - y2[center[j]]) * (y2[i] - y2[center[j]]));
+				if(distanceO <= cRadiusO[i] && distanceD <= cRadiusD[i]) {
+					inCluster = 1;
+				}		
+			}
+
+			if(inCluster == 1) {
+				printf("%lf,%lf,%lf,%lf,%d,%d,%d\n", x1[i], y1[i], x2[i], y2[i], nCass[i], nCons[i], j);
+				inCluster = 1;
+				break;
+			}
+		}
+
+		if(inCluster == 0)
+			printf("%lf,%lf,%lf,%lf,%d,%d,-1\n", x1[i], y1[i], x2[i], y2[i], nCass[i], nCons[i]);
+	}
+
+
+	
+
+
+	free(clusterCas);
+	free(clusterCon);
+	free(cRadiusO);
+	free(cRadiusD);
+	free(highCluster);
 
 
 
@@ -258,6 +428,9 @@ int main(int argc, char ** argv) {
 	free(y2);
 	free(nCass);
 	free(nCons);
+
+	if(nSim > 0)
+		free(nExtreme);
 
 	return 0;
 
