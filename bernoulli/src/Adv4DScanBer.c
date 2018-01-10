@@ -214,31 +214,31 @@ int main(int argc, char ** argv) {
 		exit(1);
 	}
 
+	//printf("windowShape = %d, pAsCenter = %d\n", windowShape, pAsCenter);
 	if(windowShape == 0) {
 		if(pAsCenter == 2) {
-			findTopNCluster4DSph(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
+			findTopNCluster4DSph(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
 		}
 		else {
-			findTopNCluster4DSph(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
+			findTopNCluster4DSph(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
 		}
 	}
 	else if(windowShape == 1) {
 		if(pAsCenter == 2) {
-			findTopNCluster2DSame(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
+			findTopNCluster2DSame(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
 		}
 		else {
-			findTopNCluster2DSame(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, cLL, nClusters);
+			findTopNCluster2DSame(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO,  cLL, nClusters);
 		}
 	}
 	else {
 		if(pAsCenter == 2) {
-			findTopNCluster2DDiff(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
-		}
-		else {
 			findTopNCluster2DDiff(xMin, yMin, cellSize, nRow, nCol, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
 		}
-	}	
-	
+		else {
+			findTopNCluster2DDiff(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
+		}
+	}
 
 	int * clusterCas;
 	int * clusterCon;
