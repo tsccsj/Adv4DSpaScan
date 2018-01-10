@@ -156,7 +156,7 @@ int main(int argc, char ** argv) {
 		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
 		exit(1);
 	}
-	if(NULL == (ll = (double *) malloc (locCount * wCount * sizeof(double)))) {
+	if(NULL == (ll = (double *) malloc (totalWindows * sizeof(double)))) {
 		printf("ERROR: Out of memory at line %d in file %s\n", __LINE__, __FILE__);
 		exit(1);
 	}
@@ -186,8 +186,12 @@ int main(int argc, char ** argv) {
 		}
 	
 	}
+
+	printf("Checkpoint 1\n");
 	
 	loglikelihood(ll, casInW, conInW, totalWindows, casCount, conCount, highLow);
+	
+	printf("Checkpoint 2\n");
 
 	int * center;
 	int * radiusO;
@@ -239,6 +243,8 @@ int main(int argc, char ** argv) {
 			findTopNCluster2DDiff(x1, y1, x2, y2, locCount, ll, wSize, wCount, center, radiusO, radiusD, cLL, nClusters);
 		}
 	}
+
+	printf("Checkpoint 3\n");
 
 	int * clusterCas;
 	int * clusterCon;
