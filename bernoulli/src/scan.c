@@ -236,9 +236,9 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			double ODDistance = sqrt((x1[i] - x2[i]) * (x1[i] - x2[i]) + (y1[i] - y2[i]) * (y1[i] - y2[i]));
 			int sumWindow = (int)(ceil(ODDistance / wSize)) - 2;
 			for(int k = 0; k < wCount; k++) {
-				for(int j = 0; j < wCount; j++) {
-					if(k + j > sumWindow) {
-						casInW[i * windowPerCen + k * wCount + j] = -1;
+				for(int l = 0; l < wCount; l++) {
+					if(k + l > sumWindow) {
+						casInW[i * windowPerCen + k * wCount + l] = -1;
 					}
 				}
 			}
@@ -294,8 +294,8 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			for(int k = minWindowO; k < wCount; k++) {
 				for(int l = minWindowD; l < wCount; l++) {
 
-					casInW[i * windowPerCen + k * wCount + j] += nCass[j];
-					conInW[i * windowPerCen + k * wCount + j] += nCons[j];
+					casInW[i * windowPerCen + k * wCount + l] += nCass[j];
+					conInW[i * windowPerCen + k * wCount + l] += nCons[j];
 				}
 			}
 		}
@@ -304,9 +304,9 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			double ODDistance = sqrt((centerX1 - centerX2) * (centerX1 - centerX2) + (centerY1 - centerY2) * (centerY1 - centerY2));
 			int sumWindow = (int)(ceil(ODDistance / wSize)) - 2;
 			for(int k = 0; k < wCount; k++) {
-				for(int j = 0; j < wCount; j++) {
-					if(k + j > sumWindow) {
-						casInW[i * windowPerCen + k * wCount + j] = -1;
+				for(int l = 0; l < wCount; l++) {
+					if(k + l > sumWindow) {
+						casInW[i * windowPerCen + k * wCount + l] = -1;
 					}
 				}
 			}
