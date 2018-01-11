@@ -226,8 +226,8 @@ void getCCCount2DDiff(double * x1, double * y1, double * x2, double * y2, int * 
 			for(int k = minWindowO; k < wCount; k++) {
 				for(int l = minWindowD; l < wCount; l++) {
 
-					casInW[i * windowPerCen + k * wCount + j] += nCass[j];
-					conInW[i * windowPerCen + k * wCount + j] += nCons[j];
+					casInW[i * windowPerCen + k * wCount + l] += nCass[j];
+					conInW[i * windowPerCen + k * wCount + l] += nCons[j];
 				}
 			}	
 		}

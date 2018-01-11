@@ -400,8 +400,7 @@ int main(int argc, char ** argv) {
 			printf("%lf,%lf,%lf,%lf,%d,%d,-1\n", x1[i], y1[i], x2[i], y2[i], nCass[i], nCons[i]);
 	}
 
-
-	
+//	printf("Checkpoint 4\n");
 
 
 	free(clusterCas);
@@ -410,21 +409,14 @@ int main(int argc, char ** argv) {
 	free(cRadiusD);
 	free(highCluster);
 
-
-
 	free(center);
 	free(radiusO);
 	free(radiusD);
 	free(cLL);
 
-	
-
-
-
-
 
 	free(casInW);
-	free(conInW);
+	free(conInW); 
 	free(ll);
 
 	free(x1);
