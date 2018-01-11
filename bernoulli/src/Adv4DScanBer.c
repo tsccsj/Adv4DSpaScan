@@ -187,11 +187,11 @@ int main(int argc, char ** argv) {
 	
 	}
 
-	printf("Checkpoint 1\n");
+//	printf("Checkpoint 1\n");
 	
 	loglikelihood(ll, casInW, conInW, totalWindows, casCount, conCount, highLow);
 	
-	printf("Checkpoint 2\n");
+//	printf("Checkpoint 2\n");
 
 	int * center;
 	int * radiusO;
@@ -244,7 +244,7 @@ int main(int argc, char ** argv) {
 		}
 	}
 
-	printf("Checkpoint 3\n");
+//	printf("Checkpoint 3\n");
 
 	int * clusterCas;
 	int * clusterCon;
@@ -378,21 +378,20 @@ int main(int argc, char ** argv) {
 			else if(windowShape == 1) {
 				distanceO = sqrt((x1[i] - x1[center[j]]) * (x1[i] - x1[center[j]]) + (y1[i] - y1[center[j]]) * (y1[i] - y1[center[j]]));
 				distanceD = sqrt((x2[i] - x2[center[j]]) * (x2[i] - x2[center[j]]) + (y2[i] - y2[center[j]]) * (y2[i] - y2[center[j]]));
-				if(distanceO <= cRadiusO[i] && distanceD <= cRadiusO[i]) {
+				if(distanceO <= cRadiusO[j] && distanceD <= cRadiusO[j]) {
 					inCluster = 1;
 				}		
 			}
 			else {
 				distanceO = sqrt((x1[i] - x1[center[j]]) * (x1[i] - x1[center[j]]) + (y1[i] - y1[center[j]]) * (y1[i] - y1[center[j]]));
 				distanceD = sqrt((x2[i] - x2[center[j]]) * (x2[i] - x2[center[j]]) + (y2[i] - y2[center[j]]) * (y2[i] - y2[center[j]]));
-				if(distanceO <= cRadiusO[i] && distanceD <= cRadiusD[i]) {
+				if(distanceO <= cRadiusO[j] && distanceD <= cRadiusD[j]) {
 					inCluster = 1;
 				}		
 			}
 
 			if(inCluster == 1) {
 				printf("%lf,%lf,%lf,%lf,%d,%d,%d\n", x1[i], y1[i], x2[i], y2[i], nCass[i], nCons[i], j);
-				inCluster = 1;
 				break;
 			}
 		}
