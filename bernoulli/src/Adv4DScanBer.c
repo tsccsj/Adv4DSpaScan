@@ -284,6 +284,8 @@ int main(int argc, char ** argv) {
 			clusterCon[i] = conInW[center[i] * windowPerCen + radiusO[i] * wCount + radiusD[i]];
 			cRadiusO[i] = wSize * (radiusO[i] + 1);
 			cRadiusD[i] = wSize * (radiusD[i] + 1);
+			//printf("%d, %d, %d, %lf\n", i, radiusO[i], radiusD[i], wSize);
+			//printf("%lf\n", wSize);
 		}
 		else {
 			clusterCas[i] = casInW[center[i] * wCount + radiusO[i]];
@@ -343,7 +345,20 @@ int main(int argc, char ** argv) {
 		else			//Low clusters
 			printf(",L");
 
-		printf(",%lf,%lf,%lf,%lf,", x1[center[i]], y1[center[i]], x2[center[i]], y2[center[i]]);
+		if(pAsCenter == 2) {
+			int temp = center[i];
+			int cX2 = temp % nCol;
+			temp = temp / nCol;
+			int cY2 = temp % nRow;
+			temp = temp / nRow;
+			int cX1 = temp % nCol;
+			int cY1 = temp / nCol;
+			
+			printf(",%lf,%lf,%lf,%lf,", xMin + cellSize * cX1, yMin + cellSize * cY1, xMin + cellSize * cX2, yMin + cellSize * cY2);
+		}
+		else {
+			printf(",%lf,%lf,%lf,%lf,", x1[center[i]], y1[center[i]], x2[center[i]], y2[center[i]]);
+		}
 		if(windowShape == 2) {
 			printf("%lf,%lf", cRadiusO[i], cRadiusD[i]);
 		}
